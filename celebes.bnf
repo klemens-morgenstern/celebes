@@ -1,0 +1,423 @@
+{
+  //extends(".*expr")=expr
+  tokens=[
+    import = 'import'
+    include = 'include'
+    namespace ='namespace'
+    par_open = '('
+    par_close = ')'
+    comma = ','
+    semicolon = ';'
+    curly_open = '{'
+    curly_close = '}'
+    attr_open = '[['
+    attr_close = ']]'
+    square_open = '['
+    square_close = ']'
+    void = 'void'
+
+    inc = '++'
+    dec = '--'
+
+    add_assign = '+='
+    sub_assign = '-='
+    mul_assign = '*='
+    div_assign = '/='
+    mod_assign = '%='
+    and_assign = '&='
+     or_assign = '|='
+    xor_assign = '^='
+    lsh_assign = '<<='
+    rsh_assign = '>>='
+    sfl_assign = '<~>='
+    arrow = '=>'
+    // (v1:v2) <~> mask
+    // v1 <~> mask
+
+    dot_ref = '.*'
+    drf = '->'
+    opt = '?.'
+
+    plus  = '+'
+    minus = '-'
+    mul = '*'
+    div = '/'
+    mod = '%'
+    and = '&'
+     or = '|'
+    xor = '^'
+    not = '~'
+    lsh = '<<'
+    rsh = '>>'
+    // auto z = x <~> order
+    // auto z = (x:y) <~> order
+    // (void)z; auto z = x:y <~> order;
+    sfl = '<~>'
+
+    cc = '$'
+
+    equal = '=='
+    not_equal = '!='
+    gt = '>'
+    lt = '<'
+    ge = '>='
+    le = '<='
+    cmp = '<=>'
+
+    log_not = '!'
+    log_and = '&&'
+    log_or  = '||'
+    log_xor = '^^'
+    qm = '?'
+    at = '@'
+    rng = '..'
+    colon = ':'
+    dot = '.'
+    str = '#'
+
+    assign = '='
+
+    await = 'await'
+    bool = 'bool'
+    break = 'break'
+    case = 'case'
+    yield = 'yield'
+    const = 'const'
+    volatile = 'volatile'
+    atomic = 'atomic'
+    macro = 'macro'
+    mutable = 'mutable'
+    thread_local = 'thread_local'
+    default = 'default'
+    explicit = 'explicit'
+    else     = 'else'
+    enum     = 'enum'
+    explicit = 'explicit'
+    extern   = 'extern'
+    expr_    = 'expr'
+    for   = 'for'
+    final = 'final'
+    void = 'void'
+    if   = 'if'
+    in   = 'in'
+    inline = 'inline'
+    is   = 'is'
+    len  = 'len'
+    let  = 'let'
+    little = 'little'
+    big = 'big'
+    interface = 'interface'
+    sizeof = 'sizeof'
+    alignof = 'alignof'
+    alignas = 'alignas'
+    operator = 'operator'
+    move = 'move'
+    new = 'new'
+    nothrow = 'nothrow'
+    null = 'null'
+    struct = 'struct'
+    switch = 'switch'
+    true = 'true'
+    throw = 'throw'
+    false ='false'
+    fast = 'fast'
+    safe = 'safe'
+    nan = 'nan'
+    then = 'then'
+    type = 'type'
+    this = 'this'
+    var = 'var'
+    try = 'try'
+    catch = 'catch'
+
+    placeholder = "regexp:\\[0-9]+"
+    builtin = "regexp:\\[a-z][0-9a-z]*"
+
+    string_literal="regexp:\"(?:[^\"\\]|\\.)*\""
+    char_literal  ="regexp:'(?:[^'\\]|\\.)*'"
+    raw_string_literal="regexp:[Rr]\"(\w*)\(.*\)\1\""
+
+    interpolation_string_single="regexp:`(?:[^`{}\\]|\.)*"
+    interpolation_string_start="regexp:`(?:[^`{}\\]|\\.)*\$\{"
+    interpolation_string_mid="regexp:\}(?:[^`{}\\]|\\.)*\$\{"
+    interpolation_string_end="regexp:\}(?:[^`{}\\]|\\.)*`"
+
+    fp_1="regexp:[1-9]['0-9]*[eE][+-]?['0-9]+"
+    fp_2="regexp:[1-9]['0-9]*\.(?!\.)([eE][+-]?['0-9]+)?"
+    fp_3="regexp:([1-9]['0-9]*)?\.['0-9]+([eE][+-]?['0-9]+)?"
+
+    int_null = '0'
+    int_dec = "regexp:[1-9]['0-9]*"
+    int_bin = "regexp:0[bB][01]['01]*"
+    int_oct = "regexp:0[oO][0-7]['0-7]*"
+    int_hex = "regexp:0[xX][0-9a-fA-F]['0-9a-fA-F]*"
+    float_t = "regexp:bf16|f16|f32|f64|f128"
+    int_t   = "regexp:[ui]\d+"
+
+    identifier_raw="regexp:[_a-z][_a-z0-9]*"
+
+    regexp="regexp:\/(?:[^\/\\]|\\.)*\/"
+    space="regexp:\s+"
+    line_comment="regexp://.*"
+    block_comment="regexp:/\*(.|\n)*\*/"
+    ]
+}
+
+root_rule ::= namespace_content*
+
+namespace_ ::= namespace_definition | namespace_alias
+namespace_definition ::= namespace scoped_identifier curly_open namespace_content* curly_close
+namespace_alias ::= namespace scoped_identifier assign absolute_identifier semicolon
+namespace_content ::= include_op | include_statement | import_statement | namespace_ | statement
+
+
+include_statement ::= include identifier? string semicolon
+include_op ::= include par_open string (comma string)? par_close
+import_statement ::= import identifier? scoped_identifier semicolon
+
+interpolation ::= interpolation_string_single
+               | (interpolation_string_start expr (interpolation_string_mid expr)* interpolation_string_end)
+
+
+identifier ::= identifier_raw | char_literal | interpolation
+
+scoped_identifier ::= dot? identifier (dot identifier) * ;
+struct_decl ::= struct identifier ';'
+
+floating_point_literal ::= (fp_1 | fp_2 | fp_3 | fp_4 | fp_5 | fp_6 ) identifier?
+int_literal ::= (int_bin | int_oct | int_dec | int_hex) identifier ?
+string ::= raw_string | char_literal | string_literal | interpolation | raw_string_literal
+
+literal ::= floating_point_literal | int_literal | string | true | false | null
+
+
+//invocation ::= absolute_identifier par_open (( dot ? identifier assign) ? expression (comma ( dot ? identifier assign) ? expression  )*)? par_close
+
+designator ::= dot identifier assign
+struct_init ::= curly_open designator? expr (comma designator? expr)* curly_close
+
+//  ( designator? primary_expression ( comma designator? primary_expression)* )? curly_close
+
+primary_expression ::= placeholder | scoped_identifier | literal | string | ((little|big)? int_t) | float_t | bool | char_literal | type
+                     | square_open (expr (comma expr)*)? square_close | struct_init | par_open expr par_close | int_null
+
+argument_list ::= (identifier colon)?  expr ((identifier colon)? comma expr)*
+
+castable_qualifier ::= mutable | const | volatile | atomic | fast | safe
+                     | log_not volatile | log_not fast | log_not safe
+                     | big | little
+
+qualifier ::= const | volatile | atomic | fast | safe | thread_local
+non_const_qualifier ::= volatile | atomic | fast | safe | thread_local
+
+postfix_expr ::=
+             primary_expression
+             (
+                square_open argument_list? square_close
+              | qm? par_open argument_list?    par_close
+              | drf identifier
+              | dot identifier
+              | inc
+              | dec
+             ) *
+
+unary_operator ::= and | mul | plus | minus | not | xor | log_not
+
+unary_expr ::= (
+            inc            |
+            dec            |
+            unary_operator |
+            sizeof         |
+            alignof        |
+            len            |
+            await          |
+            cc             |
+            new            |
+            qm             |
+            throw          |
+            str            |
+            move           ) * postfix_expr
+
+cast_expr ::= (par_open (expr | void | castable_qualifier) par_close)* unary_expr
+
+mul_expr   ::= cast_expr ((mul|div|mod) cast_expr)*
+add_expr   ::= mul_expr  ((plus|minus)  mul_expr)*
+shift_expr ::= add_expr  ((lsh|rsh)  add_expr)*
+rel_expr   ::= shift_expr ((gt|lt|ge|le) shift_expr)*
+eq_exp ::= rel_expr  ((equal|not_equal)  rel_expr)*
+
+
+
+and_exp     ::= eq_exp      (and     eq_exp)*
+exc_exp     ::= and_exp     (xor     and_exp)*
+inc_exp     ::= exc_exp     (or      exc_exp)*
+log_and_exp ::= inc_exp     (log_and inc_exp)*
+log_or_exp  ::= log_and_exp (log_or  log_and_exp)*
+rng_exp     ::= log_or_exp  (rng     log_or_exp)*
+at_exp      ::= rng_exp     (at      rng_exp)*
+
+str_exp     ::= at_exp (str at_exp)*
+sfl_exp     ::= str_exp (sfl str_exp)*
+
+is_exp      ::= sfl_exp (is (nan | sfl_exp))*
+in_exp      ::= is_exp (in is_exp)*
+cond_expr   ::= is_exp ((qm | colon) is_exp) *
+
+assign_op   ::= add_assign | sub_assign | mul_assign | div_assign | mod_assign |
+                and_assign | or_assign | xor_assign |
+                lsh_assign | rsh_assign | sfl_assign | assign
+
+assign_expr ::= (cond_expr assign_op )* cond_expr
+
+expr ::=  assign_expr | block_statement // |  lambda
+
+/*lambda ::= struct_init function_args_decl expr
+         | function_args_decl
+*/
+block_statement ::= curly_open statement* curly_close
+
+align_as ::= alignas par_open expr par_close
+
+type_mod ::= square_open (expr (comma expr)* )? square_close | xor | and | mul
+         | small (qm?) par_open expr par_close | align_as
+type_decl ::=
+        (qualifier*
+        cc ?
+        (int_t | float_t | bool | void | let | var | scoped_identifier (par_open  argument_list? par_close) ?
+        | type (par_open  expr par_close) ?
+        | struct_inline
+        | interface_inline
+        | enum_inline
+            ) type_mod* qualifier*)
+
+
+tuple_bind  ::= square_open (identifier (comma identifier)*)? square_close
+struct_bind ::= curly_open  (identifier (comma identifier)*)? curly_close
+
+bind_decl ::= (qualifier | let | var)+  (xor | and | mul)? cc ? (struct_bind | tuple_bind) (assign expr) ?
+                (comma (struct_bind | tuple_bind) (assign expr)?)*
+
+var_decl  ::= bind_decl
+            | type_decl ((dot_ref type_decl) | par_open (type_decl (comma type_decl)*)? par_close ) ?
+              identifier (assign expr )? (comma identifier (assign expr )?)* semicolon
+
+
+function_decl_args ::= type_decl (identifier|this)? (assign expr )?
+                (comma type_decl identifier? (assign expr )?)*
+macro_decl_args    ::= expr_? type_decl (identifier|this)? (assign expr )?
+                       (comma expr_? type_decl identifier? (assign expr )?)*
+
+
+
+//operator_decl ::= 'operator'
+
+// int operator[](int, int);
+// int operator..(int, int);
+// operator type_decl();
+op_decl ::= operator (await|qm|unary_operator|inc|dec|len|mul|div|mod|plus|str|minus|lsh|rsh|gt|lt|ge|le|equal|not_equal|and|xor|or|log_and|log_or|rng|in|is|qm|colon|move|assign_op)
+          | explicit
+          | explicit? operator type_decl
+
+attribute ::= attr_open (identifier (par_open expr par_close)? (comma identifier (par_open expr par_close)?)*) ? attr_close
+function_decl_spec ::= nothrow? attribute*
+
+function_decl_tail ::= par_open function_decl_args? par_close
+function_decl ::= type_decl (op_decl | scoped_identifier (dot op_decl )? ) function_decl_tail function_decl_spec
+macro_def ::= macro scoped_identifier par_open macro_decl_args ? par_close
+
+
+constructor_decl ::= this qm? function_decl_tail function_decl_spec
+destructor_decl ::= not this par_open par_close
+method_decl  ::= type_decl (op_decl | scoped_identifier (dot op_decl )? ) function_decl_tail qualifier* function_decl_spec
+vmethod_decl ::= type_decl (op_decl | scoped_identifier (dot op_decl )? ) function_decl_tail qualifier* function_decl_spec assign null
+
+interface_content ::= constructor_decl semicolon
+                    | destructor_decl semicolon
+                    | method_decl semicolon
+
+interface_decl    ::= interface attribute* identifier semicolon
+interface_def     ::= interface attribute* identifier curly_open interface_content* curly_close
+interface_inline  ::= interface attribute* curly_open interface_content* curly_close
+
+struct_content ::= constructor_decl (semicolon | ctor_init? block_statement)
+                 | destructor_decl (semicolon | block_statement)
+                 | method_decl (semicolon | block_statement)
+                 | inline? var_decl
+
+
+struct_inline_content ::= constructor_decl block_statement
+                        | destructor_decl block_statement
+                        | method_decl  block_statement
+                        | inline? var_decl
+
+
+
+struct_decl   ::= struct align_as? attribute* identifier semicolon
+struct_def    ::= struct align_as? attribute* identifier curly_open struct_content* curly_close
+struct_inline ::= struct align_as? attribute* curly_open struct_inline_content* curly_close
+
+
+strong_type_decl ::= type identifier type_decl semicolon
+
+enum_content ::= identifier (assign expr)? (comma identifier (assign expr)?)*
+
+integral ::= bool | int_t | scoped_identifier
+
+enum_decl   ::= enum (colon integral) ? attribute * identifier semicolon
+enum_def    ::= enum (colon integral) ? attribute * identifier curly_open enum_content? curly_close
+enum_inline ::= enum (colon integral) ? attribute * curly_open enum_content? curly_close
+
+
+statement ::= var_decl | expr semicolon | return expr semicolon | yield expr semicolon | block_statement semicolon?
+           | semicolon
+           | function_decl semicolon
+           | function_decl block_statement
+           | function_decl arrow expr semicolon
+           | attribute semicolon
+           | interface_decl
+           | interface_def
+           | strong_type_decl
+           | macro_def
+           | struct_decl
+           | struct_def
+           | enum_decl
+           | enum_def
+           | class_decl
+           | class_def
+           | while_loop
+           | for_loop
+           | if_
+           | switch_
+           | goto identifier semicolon
+           | identifier colon
+           | break semicolon
+           | try_catch
+
+ctor_init ::= colon scoped_identifier par_open (expr (comma expr)*)? par_close (comma scoped_identifier par_open (expr (comma expr)*)? par_close) *
+
+ppp ::= public | private | protected
+
+class_content ::=  ppp? constructor_decl (semicolon | ctor_init? block_statement  | assign default)
+                 | ppp? destructor_decl (semicolon | block_statement | assign default)
+                 | ppp? method_decl final? (semicolon | block_statement | assign null | assign default)
+                 | ppp? inline? var_decl
+                 | ppp colon
+
+
+class_def ::= class identifier semicolon
+class_decl ::= class identifier (colon scoped_identifier (comma scoped_identifier) *)? final? attribute* curly_open class_content curly_close
+
+
+then_ ::= then par_open (type_decl identifier?) par_close statement
+while_loop ::= while par_open expr par_close statement then_ ?
+for_loop ::= for par_open (type_decl identifier? in expr) par_close statement then_ ?
+
+cc? else_if ::= else if par_open (var_decl semicolon)? expr par_close statement
+cc? else_ ::= else statement
+cc? if_ ::= if par_open (type_decl identifier? semicolon)? expr par_close statement else_if * else ?
+
+case_block ::= case par_open type_decl identifier? par_close statement
+
+switch_ ::= switch par_open expr par_close curly_open (statement | case_block | default colon | case expr colon) curly_close
+try_catch ::= try statement (catch par_open type_decl identifier? par_close statement )+
+
