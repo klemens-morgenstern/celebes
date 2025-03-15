@@ -313,7 +313,13 @@ token get_numeric_token(std::string_view input, source_location & loc)
   {
     itr++, loc.column++;
     if (itr == input.end() )
-      return {token::incomplete_, input, ll};
+      return {token::dot, input.substr(0, 1), ll};
+
+    if (*itr == '.')
+    {
+      loc.column ++;
+      return {token::rng, input.substr(0, 2), ll};
+    }
 
    after_comma:
     while (itr != input)
@@ -359,15 +365,19 @@ token get_numeric_token(std::string_view input, source_location & loc)
     {
       if (in("01234567890'"))
         continue;
-
-      if (*itr == '.')
+      else if (*itr == '.')
       {
+        if (itr +1 != input.end() && *(itr + 1) == '.')
+          break;
         itr++, loc.column++;
+
         goto after_comma;
       }
-
-      if (*itr == 'e')
+      else if (*itr == 'e')
         goto has_e;
+      else
+        break;
+
     }
     return {token::int_, {input.begin(), itr}, ll};
   }
