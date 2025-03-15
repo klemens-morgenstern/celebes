@@ -95,7 +95,7 @@ struct token
     protected_,
     mutable_, thread_local_,
     extern_, in, is,
-    len, sizeof_, alignof_,
+    len, let, sizeof_, alignof_,
     new_, true_, false_, fast_, safe_, nan_, type_,
     this_,
     placeholder,
@@ -118,7 +118,7 @@ struct token
   operator bool () const {return type != none_;}
 
   bool bad() const {return type <= incomplete_;}
-
+  bool whitespace() {return type == whitespace_ || type == comment;}
   friend bool operator !=(const token &, const token &) = default;
   friend bool operator ==(const token &, const token &) = default;
 
