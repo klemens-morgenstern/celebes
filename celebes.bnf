@@ -87,6 +87,7 @@
     atomic = 'atomic'
     macro = 'macro'
     mutable = 'mutable'
+    module = 'module'
     thread_local = 'thread_local'
     default = 'default'
     explicit = 'explicit'
@@ -111,9 +112,12 @@
     alignof = 'alignof'
     alignas = 'alignas'
     operator = 'operator'
+    register = 'register'
+    partial = 'partial'
     move = 'move'
     new = 'new'
     nothrow = 'nothrow'
+    noreturn = 'noreturn'
     null = 'null'
     struct = 'struct'
     switch = 'switch'
@@ -128,6 +132,7 @@
     this = 'this'
     var = 'var'
     try = 'try'
+    union = 'union'
     catch = 'catch'
 
     placeholder = "regexp:\\[0-9]+"
@@ -163,16 +168,18 @@
     ]
 }
 
-root_rule ::= namespace_content*
+root_rule ::= module_decl ? ( include_statement | import_statement | namespace_content)*
+
+module_decl ::= module private? identifier semicolon
 
 namespace_ ::= namespace_definition | namespace_alias
 namespace_definition ::= namespace scoped_identifier curly_open namespace_content* curly_close
 namespace_alias ::= namespace scoped_identifier assign absolute_identifier semicolon
-namespace_content ::= include_op | include_statement | import_statement | namespace_ | statement
+namespace_content ::= namespace_ | global_statement
 
 
 include_statement ::= include identifier? string semicolon
-include_op ::= include par_open string (comma string)? par_close
+//include_op ::= include par_open string (comma string)? par_close
 import_statement ::= import identifier? scoped_identifier semicolon
 
 interpolation ::= interpolation_string_single
@@ -196,9 +203,9 @@ literal ::= floating_point_literal | int_literal | string | true | false | null
 designator ::= dot identifier assign
 struct_init ::= curly_open designator? expr (comma designator? expr)* curly_close
 
-//  ( designator? primary_expression ( comma designator? primary_expression)* )? curly_close
+//  ( designator? primary_expr ( comma designator? primary_expr)* )? curly_close
 
-primary_expression ::= placeholder | scoped_identifier | literal | string | ((little|big)? int_t) | float_t | bool | char_literal | type
+primary_expr ::= placeholder | scoped_identifier | literal | string | ((little|big)? int_t) | float_t | bool | char_literal | type
                      | square_open (expr (comma expr)*)? square_close | struct_init | par_open expr par_close | int_null
 
 argument_list ::= (identifier colon)?  expr ((identifier colon)? comma expr)*
@@ -211,14 +218,15 @@ qualifier ::= const | volatile | atomic | fast | safe | thread_local
 non_const_qualifier ::= volatile | atomic | fast | safe | thread_local
 
 postfix_expr ::=
-             primary_expression
+             primary_expr
              (
                 square_open argument_list? square_close
-              | qm? par_open argument_list?    par_close
+              | par_open argument_list?    par_close
               | drf identifier
               | dot identifier
               | inc
               | dec
+              | qm
              ) *
 
 unary_operator ::= and | mul | plus | minus | not | xor | log_not
@@ -247,7 +255,7 @@ rel_expr   ::= shift_expr ((gt|lt|ge|le) shift_expr)*
 eq_exp ::= rel_expr  ((equal|not_equal)  rel_expr)*
 
 
-
+// and_expr ::=
 and_exp     ::= eq_exp      (and     eq_exp)*
 exc_exp     ::= and_exp     (xor     and_exp)*
 inc_exp     ::= exc_exp     (or      exc_exp)*
@@ -267,13 +275,16 @@ assign_op   ::= add_assign | sub_assign | mul_assign | div_assign | mod_assign |
                 and_assign | or_assign | xor_assign |
                 lsh_assign | rsh_assign | sfl_assign | assign
 
-assign_expr ::= (cond_expr assign_op )* cond_expr
+//assign_expr ::= (cond_expr assign_op )* cond_expr
+assign_expr ::= unary_expr assign_op assign_expr
+              | cond_expr
 
-expr ::=  assign_expr | block_statement // |  lambda
 
-/*lambda ::= struct_init function_args_decl expr
-         | function_args_decl
-*/
+
+expr ::=  assign_expr | block_statement |  lambda
+
+lambda ::= function_decl_tail arrow expr
+
 block_statement ::= curly_open statement* curly_close
 
 align_as ::= alignas par_open expr par_close
@@ -284,7 +295,7 @@ type_decl ::=
         (qualifier*
         cc ?
         (int_t | float_t | bool | void | let | var | scoped_identifier (par_open  argument_list? par_close) ?
-        | type (par_open  expr par_close) ?
+        | type (par_open expr par_close) ?
         | struct_inline
         | interface_inline
         | enum_inline
@@ -294,7 +305,8 @@ type_decl ::=
 tuple_bind  ::= square_open (identifier (comma identifier)*)? square_close
 struct_bind ::= curly_open  (identifier (comma identifier)*)? curly_close
 
-bind_decl ::= (qualifier | let | var)+  (xor | and | mul)? cc ? (struct_bind | tuple_bind) (assign expr) ?
+bind_decl ::= (qualifier | let | var)+
+              (xor | and | mul)? cc ? (struct_bind | tuple_bind) (assign expr) ?
                 (comma (struct_bind | tuple_bind) (assign expr)?)*
 
 var_decl  ::= bind_decl
@@ -350,11 +362,15 @@ struct_inline_content ::= constructor_decl block_statement
                         | method_decl  block_statement
                         | inline? var_decl
 
+union_content ::= constructor_decl (semicolon | ctor_init? block_statement)
+                | destructor_decl (semicolon | block_statement)
+                | method_decl (semicolon | block_statement)
+                | var_decl
 
 
-struct_decl   ::= struct align_as? attribute* identifier semicolon
-struct_def    ::= struct align_as? attribute* identifier curly_open struct_content* curly_close
-struct_inline ::= struct align_as? attribute* curly_open struct_inline_content* curly_close
+struct_decl   ::= partial? struct align_as? attribute* identifier semicolon
+struct_def    ::= partial? struct align_as? attribute* identifier curly_open struct_content* curly_close
+struct_inline ::= partial? struct align_as? attribute* curly_open struct_inline_content* curly_close
 
 
 strong_type_decl ::= type identifier type_decl semicolon
@@ -363,17 +379,22 @@ enum_content ::= identifier (assign expr)? (comma identifier (assign expr)?)*
 
 integral ::= bool | int_t | scoped_identifier
 
-enum_decl   ::= enum (colon integral) ? attribute * identifier semicolon
-enum_def    ::= enum (colon integral) ? attribute * identifier curly_open enum_content? curly_close
+enum_decl   ::= inline? enum attribute * identifier (colon integral)? semicolon
+enum_def    ::= inline? enum attribute * identifier (colon integral)? curly_open enum_content? curly_close
 enum_inline ::= enum (colon integral) ? attribute * curly_open enum_content? curly_close
 
+union_decl   ::= union align_as? attribute* identifier semicolon
+union_def    ::= union align_as? attribute* identifier curly_open union_content* curly_close
 
-statement ::= var_decl | expr semicolon | return expr semicolon | yield expr semicolon | block_statement semicolon?
-           | semicolon
+register_content ::= integral identifier ? colon expr semicolon
+register_decl ::= register identifier (colon integral)? ;
+register_def  ::= register identifier (colon integral)? curly_open register_content* curly_close
+
+
+global_statement ::= extern? var_decl
            | function_decl semicolon
            | function_decl block_statement
            | function_decl arrow expr semicolon
-           | attribute semicolon
            | interface_decl
            | interface_def
            | strong_type_decl
@@ -384,6 +405,16 @@ statement ::= var_decl | expr semicolon | return expr semicolon | yield expr sem
            | enum_def
            | class_decl
            | class_def
+           | union_decl
+           | union_def
+           | register_decl
+           | register_def
+
+
+statement ::= global_statement
+           | expr semicolon | return expr semicolon | yield expr semicolon | block_statement semicolon?
+           | semicolon
+           | attribute semicolon
            | while_loop
            | for_loop
            | if_
@@ -395,6 +426,7 @@ statement ::= var_decl | expr semicolon | return expr semicolon | yield expr sem
 
 ctor_init ::= colon scoped_identifier par_open (expr (comma expr)*)? par_close (comma scoped_identifier par_open (expr (comma expr)*)? par_close) *
 
+visibility ::= private | protected
 ppp ::= public | private | protected
 
 class_content ::=  ppp? constructor_decl (semicolon | ctor_init? block_statement  | assign default)
@@ -404,8 +436,8 @@ class_content ::=  ppp? constructor_decl (semicolon | ctor_init? block_statement
                  | ppp colon
 
 
-class_def ::= class identifier semicolon
-class_decl ::= class identifier (colon scoped_identifier (comma scoped_identifier) *)? final? attribute* curly_open class_content curly_close
+class_def ::=  partial? class identifier semicolon
+class_decl ::=  partial? class identifier (colon scoped_identifier (comma scoped_identifier) *)? final? attribute* curly_open class_content curly_close
 
 
 then_ ::= then par_open (type_decl identifier?) par_close statement
@@ -418,6 +450,6 @@ cc? if_ ::= if par_open (type_decl identifier? semicolon)? expr par_close statem
 
 case_block ::= case par_open type_decl identifier? par_close statement
 
-switch_ ::= switch par_open expr par_close curly_open (statement | case_block | default colon | case expr colon) curly_close
+switch_ ::= switch par_open expr par_close curly_open (statement | case_block | default colon | case expr (comma expr)* colon) curly_close
 try_catch ::= try statement (catch par_open type_decl identifier? par_close statement )+
 
