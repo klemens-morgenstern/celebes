@@ -290,16 +290,25 @@ block_statement ::= curly_open statement* curly_close
 align_as ::= alignas par_open expr par_close
 
 type_mod ::= square_open (expr (comma expr)* )? square_close | xor | and | mul
-         | small (qm?) par_open expr par_close | align_as
-type_decl ::=
-        (qualifier*
-        cc ?
-        (int_t | float_t | bool | void | let | var | scoped_identifier (par_open  argument_list? par_close) ?
+         | small (qm?) par_open expr par_close | align_as | qm
+
+type_decl_inner ::= (int_t | float_t | bool | void | let | var | scoped_identifier (par_open  argument_list? par_close) ?
         | type (par_open expr par_close) ?
         | struct_inline
         | interface_inline
-        | enum_inline
-            ) type_mod* qualifier*)
+        | enum_inline )  (or type_decl_inner)*
+
+type_tuple ::=
+        square_open
+            type_decl_inner ( comma type_decl_inner)*
+        square_close
+
+
+type_decl ::=
+        (qualifier*
+        cc ?
+        (type_decl_inner | type_tuple )
+        type_mod* qualifier*)
 
 
 tuple_bind  ::= square_open (identifier (comma identifier)*)? square_close
