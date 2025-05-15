@@ -38,6 +38,7 @@ struct token
     include_,
     intrinsic_,
     namespace_,
+    module_,
     par_open,
     par_close,
     comma,
@@ -93,7 +94,7 @@ struct token
     public_,
     private_,
     protected_,
-    mutable_, thread_local_,
+    mutable_, thread_local_, throw_, move,
     extern_, in, is,
     len, let, sizeof_, alignof_,
     new_, true_, false_, fast_, safe_, nan_, type_,
@@ -137,12 +138,18 @@ struct tokenizer
 
     token current;
 
+    bool filter_whitespace = false;
+
           token & operator*()       {return current;}
     const token & operator*() const {return current;}
+          token * operator->()       {return &current;}
+    const token * operator->() const {return &current;}
+
     iterator & operator++()
     {
       current = input.empty() ? token{} : get_token(input, loc);
       input.remove_prefix(current.value.size());
+
       return *this;
     }
 
@@ -161,13 +168,15 @@ struct tokenizer
     {
       return lhs.current == rhs.current;
     }
+
+    bool eof() const {return current.type != token::eof;}
   };
 
   std::string_view input;
   source_location loc;
 
   iterator begin() { iterator itr{input, loc}; itr++; return itr;}
-  iterator   end() { return iterator{"", loc}; }
+  iterator   end() { return iterator{"", loc, {.type=token::eof}}; }
 };
 
 inline tokenizer tokenize(std::string_view input, source_location loc)

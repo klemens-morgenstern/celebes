@@ -31,6 +31,8 @@ token::type_t interpret_alphanum_token(std::string_view sv)
           {"is",           token::is            },
           {"len",          token::len           },
           {"let",          token::let           },
+          {"module",       token::module_       },
+          {"move",         token::move_         },
           {"mutable",      token::mutable_      },
           {"namespace",    token::namespace_    },
           {"nan",          token::nan_          },
@@ -44,6 +46,7 @@ token::type_t interpret_alphanum_token(std::string_view sv)
           {"struct",       token::struct_       },
           {"this",         token::this_         },
           {"thread_local", token::thread_local_ },
+          {"throw",        token::throw_        },
           {"true",         token::true_         },
           {"type",         token::type_         },
           {"void",         token::void_         },
@@ -212,7 +215,7 @@ token get_char_literal(std::string_view input, source_location & loc)
 
   const auto ll = loc;
 
-  for (auto itr = input.begin() + 1; itr != input.end(); itr++, loc.column ++)
+  for (auto itr = input.begin() + 1; itr != input.end(); itr++, loc.column++)
   {
     if (*itr == '\\')
       itr ++,  loc.column ++;
@@ -464,7 +467,7 @@ token get_operator(std::string_view input, source_location & loc)
 token get_token(std::string_view input, source_location & loc)
 {
   if (input.empty())
-    return token{};
+    return token{.type=token::eof};
 
   const auto c = input.front();
 
