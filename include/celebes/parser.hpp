@@ -31,7 +31,7 @@ struct placeholder : token {};
 struct interpolation
 {
   std::pmr::vector<std::string_view> segments;
-  std::pmr::vector<expr*> expressions;
+  std::pmr::vector<struct expr*> expressions;
 };
 
 using literal = std::variant<token, interpolation>;
@@ -120,7 +120,7 @@ struct statement : global_statement
 
 struct lambda;
 
-using expr = std::variant<std::monostate, assign_expr*, block_statement*, lambda*>;
+//using expr = std::variant<std::monostate, assign_expr*, block_statement*, lambda*>;
 
 /*struct expr : std::variant<assign_expr, block_statement>
 {
@@ -144,6 +144,9 @@ struct module_decl
   identifier id;
   bool private_ = false;
 };
+
+struct import_statement;
+struct include_statement;
 
 struct root_content : namespace_content
 {

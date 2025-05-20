@@ -32,7 +32,7 @@ token::type_t interpret_alphanum_token(std::string_view sv)
           {"len",          token::len           },
           {"let",          token::let           },
           {"module",       token::module_       },
-          {"move",         token::move_         },
+          {"move",         token::move          },
           {"mutable",      token::mutable_      },
           {"namespace",    token::namespace_    },
           {"nan",          token::nan_          },

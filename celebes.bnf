@@ -174,7 +174,7 @@ module_decl ::= module private? identifier semicolon
 
 namespace_ ::= namespace_definition | namespace_alias
 namespace_definition ::= namespace scoped_identifier curly_open namespace_content* curly_close
-namespace_alias ::= namespace scoped_identifier assign absolute_identifier semicolon
+namespace_alias ::= namespace scoped_identifier assign scoped_identifier semicolon
 namespace_content ::= namespace_ | global_statement
 
 
@@ -189,7 +189,7 @@ interpolation ::= interpolation_string_single
 identifier ::= identifier_raw | char_literal | interpolation
 
 scoped_identifier ::= dot? identifier (dot identifier) * ;
-struct_decl ::= struct identifier ';'
+struct_decl ::= struct identifier semicolon
 
 floating_point_literal ::= (fp_1 | fp_2 | fp_3 | fp_4 | fp_5 | fp_6 ) identifier?
 int_literal ::= (int_bin | int_oct | int_dec | int_hex) identifier ?
@@ -223,13 +223,12 @@ postfix_expr ::=
                 square_open argument_list? square_close
               | par_open argument_list?    par_close
               | drf identifier
-              | dot identifier
               | inc
               | dec
               | qm
              ) *
 
-unary_operator ::= and | mul | plus | minus | not | xor | log_not
+unary_operator ::= and | mul | plus | minus | not | xor | log_not | await
 
 unary_expr ::= (
             inc            |
@@ -238,7 +237,6 @@ unary_expr ::= (
             sizeof         |
             alignof        |
             len            |
-            await          |
             cc             |
             new            |
             qm             |
@@ -335,7 +333,7 @@ macro_decl_args    ::= expr_? type_decl (identifier|this)? (assign expr )?
 // int operator[](int, int);
 // int operator..(int, int);
 // operator type_decl();
-op_decl ::= operator (await|qm|unary_operator|inc|dec|len|mul|div|mod|plus|str|minus|lsh|rsh|gt|lt|ge|le|equal|not_equal|and|xor|or|log_and|log_or|rng|in|is|qm|colon|move|assign_op)
+op_decl ::= operator (qm|unary_operator|inc|dec|len|mul|div|mod|plus|str|minus|lsh|rsh|gt|lt|ge|le|equal|not_equal|and|xor|or|log_and|log_or|rng|in|is|qm|colon|move|assign_op)
           | explicit
           | explicit? operator type_decl
 
@@ -453,9 +451,9 @@ then_ ::= then par_open (type_decl identifier?) par_close statement
 while_loop ::= while par_open expr par_close statement then_ ?
 for_loop ::= for par_open (type_decl identifier? in expr) par_close statement then_ ?
 
-cc? else_if ::= else if par_open (var_decl semicolon)? expr par_close statement
-cc? else_ ::= else statement
-cc? if_ ::= if par_open (type_decl identifier? semicolon)? expr par_close statement else_if * else ?
+else_if ::= else if par_open (var_decl semicolon)? expr par_close statement
+else_ ::= else statement
+if_ ::= if par_open (type_decl identifier? semicolon)? expr par_close statement else_if * else ?
 
 case_block ::= case par_open type_decl identifier? par_close statement
 
