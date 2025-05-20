@@ -64,6 +64,7 @@ Log_or  : '||';
 Log_xor : '^^';
 Qm : '?';
 At : '@';
+Variadic: '...';
 Rng : '..';
 Colon : ':';
 Dot : '.';
@@ -136,6 +137,7 @@ Small : 'small';
 PlaceHolder: '\\' [0-9]+ ;
 Builtin:     '\\' [a-z][0-9a-z]* ;
 
+EmptyString   : '""' ;
 StringLiteral : '"'  (~["\\] | [\\]. )* '"' ;
 CharLiteral   : '\'' (~['\\] | [\\]. )* '\'' ;
 
@@ -155,7 +157,7 @@ fragment Fp2 : [1-9]['0-9]* Exponent ; // This seems to work with flex, as there
 
 FloatingPoint :  Fp1 | Fp2 ;
 
-IntNull: [0];
+fragment IntNull: [0];
 fragment IntDec : [1-9]['0-9]* ;
 fragment IntBin : [0][bB][01]['01]* ;
 fragment IntOct : [0][oO][0-7]['0-7]* ;
@@ -176,7 +178,7 @@ Private  : 'private';
 Public   : 'public';
 Protected: 'protected';
 
-root_rule: module_decl ? (include_statement | import_statement | namespace_content )* ;
+root_rule: module_decl ? (include_statement | import_statement | namespace_content | SemiColon )* EOF ;
 
 module_decl : Module Private? identifier SemiColon ;
 
@@ -199,9 +201,9 @@ identifier : IdentifierRaw | CharLiteral | interpolation | Builtin ;
 
 scoped_identifier : Dot? identifier (Dot identifier) * ;
 
-floating_point_literal : FloatingPoint identifier? ;
-int_literal : Int identifier ? ;
-string : RawStringLiteral | CharLiteral | StringLiteral | interpolation | RawStringLiteral ;
+floating_point_literal : FloatingPoint (identifier | FloatType)? ;
+int_literal : Int (identifier | IntType )? ;
+string : RawStringLiteral | CharLiteral | StringLiteral | EmptyString | interpolation | RawStringLiteral ;
 
 literal : floating_point_literal | int_literal | string | True | False | Null ;
 
@@ -214,7 +216,7 @@ struct_init : Curly_open designator? expr (Comma designator? expr)* Curly_close 
 //  ( designator? primary_expr ( Comma designator? primary_expr)* )? Curly_close
 
 primary_expr : PlaceHolder | scoped_identifier | literal | string | ((Little|Big)? IntType) | FloatType | Bool | CharLiteral | Type
-             | Square_open (expr (Comma expr)*)? Square_close | struct_init | Par_open expr Par_close | IntNull ;
+             | Square_open (expr (Comma expr)*)? Square_close | struct_init | Par_open expr Par_close | /*IntNull |*/ Variadic ;
 
 argument_list : (identifier Colon)?  expr ((identifier Colon)? Comma expr)* ;
 
@@ -327,10 +329,10 @@ var_decl  : bind_decl
               identifier (Assign expr )? (Comma identifier (Assign expr )?)* SemiColon ;
 
 
-function_decl_args : type_decl (identifier|This)? (Assign expr )?
-                     (Comma type_decl identifier? (Assign expr )?)* ;
-macro_decl_args    : Expr_? type_decl (identifier|This)? (Assign expr )?
-                     (Comma Expr_? type_decl identifier? (Assign expr )?)* ;
+function_decl_args : type_decl Variadic? (identifier|This)? (Assign expr )?
+                     (Comma type_decl Variadic ? identifier? (Assign expr )?)* ;
+macro_decl_args    : Expr_? type_decl Variadic ? (identifier|This)? (Assign expr )?
+                     (Comma Expr_? type_decl Variadic ? identifier? (Assign expr )?)* ;
 
 
 
@@ -339,16 +341,19 @@ macro_decl_args    : Expr_? type_decl (identifier|This)? (Assign expr )?
 // int operator[](int, int);
 // int operator..(int, int);
 // operator type_decl();
-op_decl : Operator (Qm|unary_operator|Inc|Dec|Len|Mul|Div|Mod|Plus|Str|Minus|Lsh|Rsh|Gt|Lt|Ge|Le|Equal|Not_equal|And|Xor|Or|Log_and|Log_or|Rng|In|Is|Qm|Colon|Move|assign_op)
-          | Explicit
-          | Explicit? Operator type_decl ;
+op_decl :
+          Operator (Qm|unary_operator|Inc|Dec|Len|Mul|Div|Mod|Plus|Str|Minus|Lsh|Rsh|Gt|Lt|Ge|Le|Equal|Not_equal|And|Xor|Or|Log_and|Log_or|Rng|In|Is|Qm|Colon|Move|assign_op|EmptyString)
+          | Explicit? Operator Type
+
+          ;
 
 attribute : Attr_open (identifier (Par_open expr Par_close)? (Comma identifier (Par_open expr Par_close)?)*) ? Attr_close  ;
 function_decl_spec : Nothrow? attribute*  ;
 
 function_decl_tail : Par_open function_decl_args? Par_close  ;
 function_decl : type_decl (op_decl | scoped_identifier (Dot op_decl )? ) function_decl_tail function_decl_spec ;
-macro_def : Macro scoped_identifier Par_open macro_decl_args ? Par_close ;
+macro_def : Macro scoped_identifier Par_open macro_decl_args ? Par_close
+            (block_statement | Arrow expr SemiColon) ;
 
 
 constructor_decl : This Qm? function_decl_tail function_decl_spec ;
@@ -424,6 +429,8 @@ global_statement : Extern? var_decl
            | register_def ;
 
 
+inline_namespace : Inline Namespace identifier SemiColon ;
+
 statement : global_statement
            | expr SemiColon | Return expr SemiColon | Yield expr SemiColon | block_statement SemiColon?
            | SemiColon
@@ -435,7 +442,9 @@ statement : global_statement
            | Goto identifier SemiColon
            | identifier Colon
            | Break SemiColon
-           | try_catch ;
+           | try_catch
+           | inline_namespace
+           ;
 
 ctor_init : Colon scoped_identifier Par_open (expr (Comma expr)*)? Par_close (Comma scoped_identifier Par_open (expr (Comma expr)*)? Par_close) * ;
 
