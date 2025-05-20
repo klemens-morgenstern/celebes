@@ -1,0 +1,17 @@
+module test ;
+
+import 'c++' vector ;
+
+include 'c' "unistd.h";
+
+int main(char[][] argv)
+{
+  for (let c in argv)
+    std.cout << "Arg: " << c << std.endl;
+
+  std.vector v = [1..10, 20..30];
+
+  for (let i in v)
+    std.cout << i << std.endl;
+  return 0;
+}
