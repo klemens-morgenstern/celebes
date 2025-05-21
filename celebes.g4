@@ -50,8 +50,8 @@ Sfl : '<~>';
 
 Cc : '$';
 
-Equal : '::';
-Not_equal : '!:';
+Equal : '==';
+Not_equal : '!=';
 Gt : '>';
 Lt : '<';
 Ge : '>:';
@@ -341,9 +341,8 @@ macro_decl_args    : Expr_? type_decl Variadic ? (identifier|This)? (Assign expr
 // int operator[](int, int);
 // int operator..(int, int);
 // operator type_decl();
-op_decl :
-          Operator (Qm|unary_operator|Inc|Dec|Len|Mul|Div|Mod|Plus|Str|Minus|Lsh|Rsh|Gt|Lt|Ge|Le|Equal|Not_equal|And|Xor|Or|Log_and|Log_or|Rng|In|Is|Qm|Colon|Move|assign_op|EmptyString)
-          | Explicit? Operator Type
+op_decl : Operator (Qm|unary_operator|Inc|Dec|Len|Mul|Div|Mod|Plus|Str|Minus|Lsh|Rsh|Gt|Lt|Ge|Le|Equal|Not_equal|And|Xor|Or|Log_and|Log_or|Rng|In|Is|Qm|Colon|Move|assign_op|(EmptyString identifier))
+        | Explicit? Operator Type
 
           ;
 
