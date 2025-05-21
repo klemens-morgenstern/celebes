@@ -18,18 +18,18 @@ Void : 'void';
 Inc : '++';
 Dec : '--';
 
-Add_assign : '+:';
-Sub_assign : '-:';
-Mul_assign : '*:';
-Div_assign : '/:';
-Mod_assign : '%:';
-And_assign : '&:';
- Or_assign : '|:';
-Xor_assign : '^:';
-Lsh_assign : '<<:';
-Rsh_assign : '>>:';
-Sfl_assign : '<~>:';
-Arrow : ':>';
+Add_assign : '+=';
+Sub_assign : '-=';
+Mul_assign : '*=';
+Div_assign : '/=';
+Mod_assign : '%=';
+And_assign : '&=';
+ Or_assign : '|=';
+Xor_assign : '^=';
+Lsh_assign : '<<=';
+Rsh_assign : '>>=';
+Sfl_assign : '<~>=';
+Arrow : '=>';
 
 Dot_ref : '.*';
 Drf : '->';
@@ -368,10 +368,10 @@ interface_decl    : Interface attribute* identifier SemiColon  ;
 interface_def     : Interface attribute* identifier Curly_open interface_content* Curly_close  ;
 interface_inline  : Interface attribute*            Curly_open interface_content* Curly_close ;
 
-struct_content : constructor_decl (SemiColon | ctor_init? block_statement)
-                 | destructor_decl (SemiColon | block_statement)
-                 | method_decl (SemiColon | block_statement)
-                 | Inline? var_decl ;
+struct_content : constructor_decl (SemiColon | ctor_init? block_statement ctor_init? | Arrow expr SemiColon)
+               | destructor_decl (SemiColon |           block_statement | Arrow expr SemiColon)
+               | method_decl (SemiColon | block_statement)
+               | Inline? var_decl ;
 
 
 struct_inline_content : constructor_decl block_statement
@@ -407,6 +407,11 @@ register_content : integral identifier ? Colon expr SemiColon ;
 register_decl : Register identifier (Colon integral)? ;
 register_def  : Register identifier (Colon integral)? Curly_open register_content* Curly_close ;
 
+constructor_def: scoped_identifier Dot This function_decl_tail function_decl_spec
+                (block_statement | Assign Default SemiColon | Arrow expr SemiColon) ;
+
+destructor_def: scoped_identifier Dot Not This Par_open Par_close
+                (block_statement | Assign Default SemiColon | Arrow expr SemiColon) ;
 
 global_statement : Extern? var_decl
            | function_decl SemiColon
@@ -425,7 +430,10 @@ global_statement : Extern? var_decl
            | union_decl
            | union_def
            | register_decl
-           | register_def ;
+           | register_def
+           | constructor_def
+           | destructor_def
+           ;
 
 
 inline_namespace : Inline Namespace identifier SemiColon ;
@@ -438,7 +446,8 @@ statement : global_statement
            | for_loop
            | if_
            | switch_
-           | Goto identifier SemiColon
+           | Goto scoped_identifier SemiColon
+           | Goto Case expr SemiColon
            | identifier Colon
            | Break SemiColon
            | try_catch
@@ -447,18 +456,17 @@ statement : global_statement
 
 ctor_init : Colon scoped_identifier Par_open (expr (Comma expr)*)? Par_close (Comma scoped_identifier Par_open (expr (Comma expr)*)? Par_close) * ;
 
-visibility : Private | Protected  ;
-ppp : Public | Private | Protected  ;
+visibility : Public | Private | Protected  ;
 
-class_content :  ppp? constructor_decl (SemiColon | ctor_init? block_statement  | Assign Default)
-                 | ppp? destructor_decl (SemiColon | block_statement | Assign Default)
-                 | ppp? method_decl Final? (SemiColon | block_statement | Assign Null | Assign Default)
-                 | ppp? Inline? var_decl
-                 | ppp Colon ;
+class_content : visibility? constructor_decl (SemiColon | ctor_init? block_statement  | Assign Default)
+              | visibility?  destructor_decl (SemiColon | block_statement | Assign Default)
+              | visibility? method_decl Final? (SemiColon | block_statement | Assign Null | Assign Default)
+              | visibility? Inline? var_decl
+              | visibility Colon ;
 
 
 class_def  : Partial? Class identifier SemiColon ;
-class_decl : Partial? Class identifier (Colon scoped_identifier (Comma scoped_identifier) *)? Final? attribute* Curly_open class_content Curly_close ;
+class_decl : Partial? Class identifier (Colon visibility? scoped_identifier (Comma visibility? scoped_identifier) *)? Final? attribute* Curly_open class_content Curly_close ;
 
 
 then_ : Then Par_open (type_decl identifier?) Par_close statement ;
@@ -466,10 +474,10 @@ while_loop : While Par_open expr Par_close statement then_ ? ;
 for_loop: For Par_open (type_decl identifier? In expr) Par_close statement then_ ? ;
 else_if : Cc? Else If Par_open (var_decl SemiColon)? expr Par_close statement ;
 else_   : Cc? Else statement ;
-if_     : Cc? If Par_open (type_decl identifier? SemiColon)? expr Par_close statement else_if * Else ? ;
+if_     : Cc? If Par_open var_decl? expr Par_close statement else_if * else_ ? ;
 
 case_block : Case Par_open type_decl identifier? Par_close statement ;
 
-switch_ : Switch Par_open expr Par_close Curly_open (statement | case_block | Default Colon | Case expr (Comma expr)* Colon) Curly_close ;
+switch_ : Switch identifier Par_open expr Par_close Curly_open (statement | case_block | Default (Colon | statement) | Case expr (Comma expr)* (Colon | statement)) Curly_close ;
 try_catch : Try statement (Catch Par_open type_decl identifier? Par_close statement )+ ;
 
