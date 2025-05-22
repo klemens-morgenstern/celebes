@@ -72,6 +72,7 @@ Str : '#';
 
 Assign : '=';
 
+Async:    'async';
 Await:    'await';
 Bool:     'bool';
 Break:    'break';
@@ -180,19 +181,6 @@ Protected: 'protected';
 
 root_rule: module_decl ? (include_statement | import_statement | namespace_content | SemiColon )* EOF ;
 
-module_decl : Module Private? identifier SemiColon ;
-
-namespace_ : namespace_definition | namespace_alias;
-namespace_definition : Namespace scoped_identifier Curly_open namespace_content* Curly_close;
-namespace_alias : Namespace scoped_identifier Assign scoped_identifier SemiColon;
-namespace_content : namespace_ | global_statement;
-
-
-include_statement : Include identifier? string SemiColon;
-//include_op : include Par_open string (Comma string)? Par_close
-import_statement : Import identifier? scoped_identifier SemiColon;
-
-
 interpolation : InterpolationStringSingle
               | (InterpolationStringStart expr (InterpolationStringMid expr)* InterpolationStringEnd);
 
@@ -208,6 +196,19 @@ string : RawStringLiteral | CharLiteral | StringLiteral | EmptyString | interpol
 literal : floating_point_literal | int_literal | string | True | False | Null ;
 
 
+module_decl : Module Private? identifier SemiColon ;
+
+namespace_definition : Namespace scoped_identifier Curly_open namespace_content* Curly_close;
+namespace_alias : Namespace scoped_identifier Assign scoped_identifier SemiColon;
+namespace_content : namespace_definition | namespace_alias | global_statement;
+
+
+include_statement : Include identifier? string SemiColon;
+//include_op : include Par_open string (Comma string)? Par_close
+import_statement : Import identifier? scoped_identifier SemiColon;
+
+
+
 //invocation : absolute_identifier Par_open (( dot ? identifier assign) ? expression (Comma ( dot ? identifier assign) ? expression  )*)? Par_close
 
 designator : Dot identifier Assign ;
@@ -215,7 +216,7 @@ struct_init : Curly_open designator? expr (Comma designator? expr)* Curly_close 
 
 //  ( designator? primary_expr ( Comma designator? primary_expr)* )? Curly_close
 
-primary_expr : PlaceHolder | scoped_identifier | literal | string | ((Little|Big)? IntType) | FloatType | Bool | CharLiteral | Type
+primary_expr : PlaceHolder | scoped_identifier | literal | string | ((Little|Big)? IntType) | FloatType | Bool | Type
              | Square_open (expr (Comma expr)*)? Square_close | struct_init | Par_open expr Par_close | /*IntNull |*/ Variadic ;
 
 argument_list : (identifier Colon)?  expr ((identifier Colon)? Comma expr)* ;
@@ -287,11 +288,12 @@ assign_op   : Add_assign | Sub_assign | Mul_assign | Div_assign | Mod_assign |
 assign_expr : unary_expr assign_op assign_expr
               | cond_expr  ;
 
-expr :  assign_expr | block_statement | lambda  ;
-
-lambda : function_decl_tail Arrow expr  ;
 
 block_statement : Curly_open statement* Curly_close ;
+lambda : Async? function_decl_tail Arrow expr  ;
+
+expr :  assign_expr | block_statement | lambda  ;
+
 
 align_as : Alignas Par_open expr Par_close  ;
 
@@ -324,12 +326,11 @@ bind_decl : (qualifier | Let | Var)+
            (Xor | And | Mul)? Cc ? (struct_bind | tuple_bind) (Assign expr) ?
            (Comma (struct_bind | tuple_bind) (Assign expr)?)*  ;
 
-var_decl  : bind_decl
-            | type_decl ((Dot_ref type_decl) | Par_open (type_decl (Comma type_decl)*)? Par_close ) ?
-              identifier (Assign expr )? (Comma identifier (Assign expr )?)* SemiColon ;
+var_decl  : type_decl ((Dot_ref type_decl) | Par_open (type_decl (Comma type_decl)*)? Par_close ) ?
+            identifier (Assign expr )? (Comma identifier (Assign expr )?)* SemiColon ;
 
 
-function_decl_args : type_decl Variadic? (identifier|This)? (Assign expr )?
+function_decl_args : type_decl (This | Variadic? identifier)? (Assign expr )?
                      (Comma type_decl Variadic ? identifier? (Assign expr )?)* ;
 macro_decl_args    : Expr_? type_decl Variadic ? (identifier|This)? (Assign expr )?
                      (Comma Expr_? type_decl Variadic ? identifier? (Assign expr )?)* ;
@@ -341,7 +342,7 @@ macro_decl_args    : Expr_? type_decl Variadic ? (identifier|This)? (Assign expr
 // int operator[](int, int);
 // int operator..(int, int);
 // operator type_decl();
-op_decl : Operator (Qm|unary_operator|Inc|Dec|Len|Mul|Div|Mod|Plus|Str|Minus|Lsh|Rsh|Gt|Lt|Ge|Le|Equal|Not_equal|And|Xor|Or|Log_and|Log_or|Rng|In|Is|Qm|Colon|Move|assign_op|(EmptyString identifier))
+op_decl : Operator (Qm|unary_operator|Inc|Dec|Len|Div|Mod|Str|Lsh|Rsh|Gt|Lt|Ge|Le|Equal|Not_equal|Or|Log_and|Log_or|Rng|In|Is|Colon|Move|assign_op|(EmptyString identifier))
         | Explicit? Operator Type
 
           ;
@@ -350,15 +351,14 @@ attribute : Attr_open (identifier (Par_open expr Par_close)? (Comma identifier (
 function_decl_spec : Nothrow? attribute*  ;
 
 function_decl_tail : Par_open function_decl_args? Par_close  ;
-function_decl : type_decl (op_decl | scoped_identifier (Dot op_decl )? ) function_decl_tail function_decl_spec ;
-macro_def : Macro scoped_identifier Par_open macro_decl_args ? Par_close
+function_decl : Async? type_decl (op_decl | scoped_identifier (Dot op_decl )? ) function_decl_tail function_decl_spec ;
+macro_def :         Macro (op_decl | scoped_identifier (Dot op_decl)? ) Par_open macro_decl_args ? Par_close
             (block_statement | Arrow expr SemiColon) ;
 
 
 constructor_decl : This Qm? function_decl_tail function_decl_spec ;
 destructor_decl : Not This Par_open Par_close ;
-method_decl  : type_decl (op_decl | scoped_identifier (Dot op_decl )? ) function_decl_tail qualifier* function_decl_spec ;
-vmethod_decl : type_decl (op_decl | scoped_identifier (Dot op_decl )? ) function_decl_tail qualifier* function_decl_spec Assign Null ;
+method_decl  : Async? type_decl (op_decl | scoped_identifier) function_decl_tail qualifier* function_decl_spec ;
 
 interface_content : constructor_decl SemiColon
                     | destructor_decl SemiColon
@@ -380,9 +380,9 @@ struct_inline_content : constructor_decl block_statement
                         | Inline? var_decl  ;
 
 union_content : constructor_decl (SemiColon | ctor_init? block_statement)
-                | destructor_decl (SemiColon | block_statement)
-                | method_decl (SemiColon | block_statement)
-                | var_decl  ;
+               | destructor_decl (SemiColon | block_statement)
+               | method_decl (SemiColon | block_statement)
+               | var_decl  ;
 
 
 struct_decl   : Partial? Struct align_as? attribute* identifier SemiColon ;
@@ -414,6 +414,7 @@ destructor_def: scoped_identifier Dot Not This Par_open Par_close
                 (block_statement | Assign Default SemiColon | Arrow expr SemiColon) ;
 
 global_statement : Extern? var_decl
+           | Extern? bind_decl
            | function_decl SemiColon
            | function_decl block_statement
            | function_decl Arrow expr SemiColon
@@ -436,7 +437,7 @@ global_statement : Extern? var_decl
            ;
 
 
-inline_namespace : Inline Namespace identifier SemiColon ;
+inline_namespace : Inline Namespace scoped_identifier SemiColon ;
 
 statement : global_statement
            | expr SemiColon | Return expr SemiColon | Yield expr SemiColon | block_statement SemiColon?
@@ -465,16 +466,16 @@ class_content : visibility? constructor_decl (SemiColon | ctor_init? block_state
               | visibility Colon ;
 
 
-class_def  : Partial? Class identifier SemiColon ;
-class_decl : Partial? Class identifier (Colon visibility? scoped_identifier (Comma visibility? scoped_identifier) *)? Final? attribute* Curly_open class_content Curly_close ;
+class_decl : Partial? Class identifier SemiColon ;
+class_def  : Partial? Class identifier (Colon visibility? scoped_identifier (Comma visibility? scoped_identifier) *)? Final? attribute* Curly_open class_content Curly_close ;
 
 
 then_ : Then Par_open (type_decl identifier?) Par_close statement ;
 while_loop : While Par_open expr Par_close statement then_ ? ;
 for_loop: For Par_open (type_decl identifier? In expr) Par_close statement then_ ? ;
-else_if : Cc? Else If Par_open (var_decl SemiColon)? expr Par_close statement ;
+else_if : Cc? Else If Par_open ((var_decl | bind_decl) SemiColon)? expr Par_close statement ;
 else_   : Cc? Else statement ;
-if_     : Cc? If Par_open var_decl? expr Par_close statement else_if * else_ ? ;
+if_     : Cc? If Par_open (var_decl | bind_decl)? expr Par_close statement else_if * else_ ? ;
 
 case_block : Case Par_open type_decl identifier? Par_close statement ;
 
