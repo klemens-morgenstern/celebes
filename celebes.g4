@@ -237,6 +237,7 @@ postfix_expr :
               | Inc
               | Dec
               | Qm
+              | Dot Par_open primary_expr Par_close // dynamic cast, e.g. foo.(bar) ;
              ) *  ;
 
 unary_operator : And | Mul | Plus | Minus | Not | Xor | Log_not | Await ;
@@ -356,7 +357,7 @@ macro_def :         Macro (op_decl | scoped_identifier (Dot op_decl)? ) Par_open
             (block_statement | Arrow expr SemiColon) ;
 
 
-constructor_decl : This Qm? function_decl_tail function_decl_spec ;
+constructor_decl : Async? This Qm? function_decl_tail function_decl_spec ;
 destructor_decl : Not This Par_open Par_close ;
 method_decl  : Async? type_decl (op_decl | scoped_identifier) function_decl_tail qualifier* function_decl_spec ;
 
